@@ -736,8 +736,16 @@
 					.end()
 					.find('span').removeClass('active');
 				if (currentYear == year) {
-					// getUTCMonths() returns 0 based, and we need to select the next one
-					months.eq(this.date.getUTCMonth() + 2).addClass('active');
+					if (this.startViewMode == 5) {
+						var idx = Math.floor(this.date.getUTCMonth() / 3);
+						months.eq(idx+2).addClass('active');
+					} else if (this.startViewMode == 6) {
+						var idx = Math.floor(this.date.getUTCMonth() / 6);
+						months.eq(idx+2).addClass('active');
+					} else {
+						// getUTCMonths() returns 0 based, and we need to select the next one
+						months.eq(this.date.getUTCMonth() + 2).addClass('active');
+					}
 				}
 				if (year < startYear || year > endYear) {
 					months.addClass('disabled');
