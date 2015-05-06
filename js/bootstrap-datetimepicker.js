@@ -553,6 +553,24 @@
 			this.picker.find('.datetimepicker-days thead').append(html);
 		},
 
+		fillSeasons: function () {
+			var html = '',
+				i = 0;
+			while (i < 4) {
+				html += ' <span class="season">' + dates[this.language].seasonsShort[i++] + '</span> ';
+			}
+			this.picker.find('.datetimepicker-season td').html(html);
+		},
+
+		fillHalfYears: function () {
+			var html = '',
+				i = 0;
+			while (i < 2) {
+				html += '<span class="halfyear">' + dates[this.language].halfYearShort[i++] + '</span>';
+			}
+			this.picker.find('.datetimepicker-halfyear td').html(html);
+		},
+
 		fillMonths: function () {
 			var html = '',
 				i = 0;
@@ -595,6 +613,8 @@
 				.toggle(this.todayBtn !== false);
 			this.updateNavArrows();
 			this.fillMonths();
+			this.fillSeasons();
+			this.fillHalfYears();
 			/*var prevMonth = UTCDate(year, month, 0,0,0,0,0);
 			 prevMonth.setUTCDate(prevMonth.getDate() - (prevMonth.getUTCDay() - this.weekStart + 7)%7);*/
 			var prevMonth = UTCDate(year, month - 1, 28, 0, 0, 0, 0),
@@ -708,24 +728,30 @@
 			this.picker.find('.datetimepicker-minutes td').html(html.join(''));
 
 			var currentYear = this.date.getUTCFullYear();
-			var months = this.picker.find('.datetimepicker-months')
-				.find('th:eq(1)')
-				.text(year)
-				.end()
-				.find('span').removeClass('active');
-			if (currentYear == year) {
-				// getUTCMonths() returns 0 based, and we need to select the next one
-				months.eq(this.date.getUTCMonth() + 2).addClass('active');
+
+			function setDatePickerHeader(selector) {
+				var months = this.picker.find(selector)
+					.find('th:eq(1)')
+					.text(year)
+					.end()
+					.find('span').removeClass('active');
+				if (currentYear == year) {
+					// getUTCMonths() returns 0 based, and we need to select the next one
+					months.eq(this.date.getUTCMonth() + 2).addClass('active');
+				}
+				if (year < startYear || year > endYear) {
+					months.addClass('disabled');
+				}
+				if (year == startYear) {
+					months.slice(0, startMonth + 1).addClass('disabled');
+				}
+				if (year == endYear) {
+					months.slice(endMonth).addClass('disabled');
+				}
 			}
-			if (year < startYear || year > endYear) {
-				months.addClass('disabled');
-			}
-			if (year == startYear) {
-				months.slice(0, startMonth + 1).addClass('disabled');
-			}
-			if (year == endYear) {
-				months.slice(endMonth).addClass('disabled');
-			}
+			setDatePickerHeader.apply(this, ['.datetimepicker-months']);
+			setDatePickerHeader.apply(this, ['.datetimepicker-season']);
+			setDatePickerHeader.apply(this, ['.datetimepicker-halfyear']);
 
 			html = '';
 			year = parseInt(year / 10, 10) * 10;
@@ -800,6 +826,8 @@
 					break;
 				case 3:
 				case 4:
+				case 5:
+				case 6:
 					if (this.startDate !== -Infinity && year <= this.startDate.getUTCFullYear()) {
 						this.picker.find('.prev').css({visibility: 'hidden'});
 					} else {
@@ -883,6 +911,8 @@
 										break;
 									case 3:
 									case 4:
+									case 5:
+									case 6:
 										this.viewDate = this.moveYear(this.viewDate, dir);
 										break;
 								}
@@ -942,6 +972,32 @@
 									date: this.viewDate
 								});
 								if (this.viewSelect >= 4) {
+									this._setDate(UTCDate(year, month, day, hours, minutes, seconds, 0));
+								}
+							} else if (target.is('.season')) {
+								this.viewDate.setUTCDate(1);
+								month = target.parent().find('span').index(target) * 3;
+								console.log(month);
+								day = this.viewDate.getUTCDate();
+								this.viewDate.setUTCMonth(month);
+								this.element.trigger({
+									type: 'changeMonth',
+									date: this.viewDate
+								});
+								if (this.viewSelect >= 3) {
+									this._setDate(UTCDate(year, month, day, hours, minutes, seconds, 0));
+								}
+							} else if (target.is('.halfyear')) {
+								this.viewDate.setUTCDate(1);
+								month = target.parent().find('span').index(target) * 6;
+								console.log(month);
+								day = this.viewDate.getUTCDate();
+								this.viewDate.setUTCMonth(month);
+								this.element.trigger({
+									type: 'changeMonth',
+									date: this.viewDate
+								});
+								if (this.viewSelect >= 3) {
 									this._setDate(UTCDate(year, month, day, hours, minutes, seconds, 0));
 								}
 							} else if (target.is('.hour')) {
@@ -1126,6 +1182,13 @@
 			return new_date;
 		},
 
+		moveSeason: function (date, dir) {
+			return this.moveMonth(date, dir * 4);
+		},
+		moveHalfYear: function (date, dir) {
+			return this.moveMonth(date, dir * 6);
+		},
+
 		moveYear: function (date, dir) {
 			return this.moveMonth(date, dir * 12);
 		},
@@ -1158,7 +1221,13 @@
 					} else if (e.shiftKey) {
 						viewMode += 1;
 					}
-					if (viewMode == 4) {
+					if (viewMode == 6) { // half year
+						newDate = this.moveHalfYear(this.date, dir);
+						newViewDate = this.moveHalfYear(this.viewDate, dir);
+					} else if (viewMode == 5) { // season
+						newDate = this.moveSeason(this.date, dir);
+						newViewDate = this.moveSeason(this.viewDate, dir);
+					} else if (viewMode == 4) {
 						newDate = this.moveYear(this.date, dir);
 						newViewDate = this.moveYear(this.viewDate, dir);
 					} else if (viewMode == 3) {
@@ -1193,7 +1262,13 @@
 					} else if (e.shiftKey) {
 						viewMode += 1;
 					}
-					if (viewMode == 4) {
+					if (viewMode == 6) { // half year
+						newDate = this.moveHalfYear(this.date, dir);
+						newViewDate = this.moveHalfYear(this.viewDate, dir);
+					} else if (viewMode == 5) { // season
+						newDate = this.moveSeason(this.date, dir);
+						newViewDate = this.moveSeason(this.viewDate, dir);
+					} else if (viewMode == 4) {
 						newDate = this.moveYear(this.date, dir);
 						newViewDate = this.moveYear(this.viewDate, dir);
 					} else if (viewMode == 3) {
@@ -1261,6 +1336,23 @@
 		},
 
 		showMode: function (dir) {
+			if (this.startViewMode == 5 ||  this.startViewMode == 6) {
+				// year selector for season/halfyear mode
+				if (dir == 1) {
+					var newViewMode = 4;
+					this.element.trigger({
+						type:        'changeMode',
+						date:        this.viewDate,
+						oldViewMode: this.viewMode,
+						newViewMode: newViewMode
+					});
+					this.viewMode = newViewMode;
+				} else {
+				}
+				this.picker.find('>div').hide().filter('.datetimepicker-' + DPGlobal.modes[this.viewMode].clsName).css('display', 'block');
+				this.updateNavArrows();
+				return;
+			}
 			if (dir) {
 				var newViewMode = Math.max(0, Math.min(DPGlobal.modes.length - 1, this.viewMode + dir));
 				if (newViewMode >= this.minView && newViewMode <= this.maxView) {
@@ -1270,7 +1362,6 @@
 						oldViewMode: this.viewMode,
 						newViewMode: newViewMode
 					});
-
 					this.viewMode = newViewMode;
 				}
 			}
@@ -1294,6 +1385,10 @@
 
 		convertViewModeText:  function (viewMode) {
 			switch (viewMode) {
+				case 6:
+					return 'halfyear';
+				case 5:
+					return 'season';
 				case 4:
 					return 'decade';
 				case 3:
@@ -1343,6 +1438,8 @@
 			daysMin:     ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
 			months:      ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
 			monthsShort: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+			seasonsShort: ["Season 1", "Season 2", "Season 3", "Season 4"],
+			halfYearShort: ["First Half Year", "Last Half Year"],
 			meridiem:    ["am", "pm"],
 			suffix:      ["st", "nd", "rd", "th"],
 			today:       "Today"
@@ -1375,6 +1472,16 @@
 				clsName: 'years',
 				navFnc:  'FullYear',
 				navStep: 10
+			},
+			{
+				clsName: 'season',
+				navFnc:  'FullYear',
+				navStep: 1
+			},
+			{
+				clsName: 'halfyear',
+				navFnc:  'FullYear',
+				navStep: 1
 			}
 		],
 		isLeapYear:       function (year) {
@@ -1400,7 +1507,7 @@
 		},
 		validParts:       function (type) {
 			if (type == "standard") {
-				return /hh?|HH?|p|P|ii?|ss?|dd?|DD?|mm?|MM?|yy(?:yy)?/g;
+				return /hh?|HH?|p|P|ii?|ss?|dd?|DD?|mm?|MM?|yy(?:yy)?|SS|XX0/g;
 			} else if (type == "php") {
 				return /[dDjlNwzFmMnStyYaABgGhHis]/g;
 			} else {
@@ -1569,6 +1676,8 @@
 					m:    date.getUTCMonth() + 1,
 					M:    dates[language].monthsShort[date.getUTCMonth()],
 					MM:   dates[language].months[date.getUTCMonth()],
+					SS:   dates[language].seasonsShort[date.getUTCMonth()/3],
+					XX0:   dates[language].halfYearShort[date.getUTCMonth()/6],
 					// day
 					d:    date.getUTCDate(),
 					D:    dates[language].daysShort[date.getUTCDay()],
@@ -1647,6 +1756,14 @@
 		},
 		convertViewMode:  function (viewMode) {
 			switch (viewMode) {
+				case 6:
+				case 'halfyear':
+					viewMode = 6;
+					break;
+				case 5:
+				case 'season':
+					viewMode = 5;
+					break;
 				case 4:
 				case 'decade':
 					viewMode = 4;
@@ -1717,6 +1834,20 @@
 		DPGlobal.footTemplate +
 		'</table>' +
 		'</div>' +
+		'<div class="datetimepicker-season">' +
+		'<table class="table-condensed">' +
+		DPGlobal.headTemplate +
+		DPGlobal.contTemplate +
+		DPGlobal.footTemplate +
+		'</table>' +
+		'</div>' +
+		'<div class="datetimepicker-halfyear">' +
+		'<table class="table-condensed">' +
+		DPGlobal.headTemplate +
+		DPGlobal.contTemplate +
+		DPGlobal.footTemplate +
+		'</table>' +
+		'</div>' +
 		'<div class="datetimepicker-years">' +
 		'<table class="table-condensed">' +
 		DPGlobal.headTemplate +
@@ -1748,6 +1879,20 @@
 		'</table>' +
 		'</div>' +
 		'<div class="datetimepicker-months">' +
+		'<table class="table-condensed">' +
+		DPGlobal.headTemplateV3 +
+		DPGlobal.contTemplate +
+		DPGlobal.footTemplate +
+		'</table>' +
+		'</div>' +
+		'<div class="datetimepicker-season">' +
+		'<table class="table-condensed">' +
+		DPGlobal.headTemplateV3 +
+		DPGlobal.contTemplate +
+		DPGlobal.footTemplate +
+		'</table>' +
+		'</div>' +
+		'<div class="datetimepicker-halfyear">' +
 		'<table class="table-condensed">' +
 		DPGlobal.headTemplateV3 +
 		DPGlobal.contTemplate +
